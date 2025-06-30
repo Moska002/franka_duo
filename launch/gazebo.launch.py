@@ -21,7 +21,10 @@ def generate_launch_description():
         'fr3',
         xacro_file
     )
-    urdf = xacro.process_file(xacro_complete_path)
+    urdf = xacro.process_file(xacro_complete_path,  mappings={
+        'ros2_control': 'true',
+        'gazebo': 'true'
+    })
     robot_description = urdf.toxml()
 
     rviz_path = os.path.join(get_package_share_directory('franka_duo'), 'rviz', rviz_config_file)
