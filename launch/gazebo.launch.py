@@ -1,15 +1,20 @@
-from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
-
 import os
 import xacro
+
 from ament_index_python.packages import get_package_share_directory
 
-# LIBGL_ALWAYS_SOFTWARE=1
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, OpaqueFunction, ExecuteProcess, RegisterEventHandler
+from launch.event_handlers import OnProcessExit
+
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+from launch import LaunchContext, LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import  LaunchConfiguration
+from launch_ros.actions import Node
 
 def generate_launch_description():
     xacro_file = 'fr3.urdf.xacro'
@@ -25,13 +30,36 @@ def generate_launch_description():
         'ros2_control': 'true',
         'gazebo': 'true'
     })
-    robot_description = urdf.toxml()
+    robot_description = urdf.toprettyxml(indent='\t')
+
+    print(robot_description)
 
     rviz_path = os.path.join(get_package_share_directory('franka_duo'), 'rviz', rviz_config_file)
 
     # Gazebo specific configurations
     os.environ['GZ_SIM_RESOURCE_PATH'] = os.path.dirname(get_package_share_directory('franka_description'))
     pkg_ros_gz_sim = get_package_share_directory('ros_gz_sim')
+
+    # Spawn
+    spawn = Node(
+        package='ros_gz_sim',
+        executable='create',
+        arguments=['-topic', '/robot_description'],
+        output='screen',
+    )
+    
+    load_joint_state_broadcaster = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
+                'joint_state_broadcaster'],
+        output='screen'
+    )
+
+    joint_velocity_example_controller = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
+                'joint_position_example_controller'],
+        output='screen'
+    )
+
 
     return LaunchDescription([
         Node(
@@ -57,12 +85,19 @@ def generate_launch_description():
             launch_arguments={'gz_args': 'empty.sdf -r --render-engine ogre'}.items(),
         ),
         
-        # Spawn
-        Node(
-            package='ros_gz_sim',
-            executable='create',
-            arguments=['-topic', '/robot_description'],
-            output='screen',
+        spawn,
+
+        RegisterEventHandler(
+                event_handler=OnProcessExit(
+                    target_action=spawn,
+                    on_exit=[load_joint_state_broadcaster],
+                )
+        ),
+        RegisterEventHandler(
+            event_handler=OnProcessExit(
+                target_action=load_joint_state_broadcaster,
+                on_exit=[joint_velocity_example_controller],
+            )
         ),
 
         Node(

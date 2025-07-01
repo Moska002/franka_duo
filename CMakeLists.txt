@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 project(franka_duo)
 
 install(
-  DIRECTORY launch rviz
+  DIRECTORY config launch rviz
   DESTINATION share/${PROJECT_NAME}
 )
 
