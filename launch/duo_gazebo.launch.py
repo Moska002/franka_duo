@@ -93,7 +93,7 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(pkg_ros_gz_sim, 'launch', 'gz_sim.launch.py')),
-            launch_arguments={'gz_args': 'empty.sdf -r', }.items(),
+            launch_arguments={'gz_args': 'empty.sdf -r --render-engine ogre'}.items(),
         ),
 
         # Launch RViz
